@@ -15,46 +15,46 @@ mongoose.connect('mongodb+srv://dbuser:avokado@lyubovk.egwftuw.mongodb.net/?retr
 });
 
 
-//defining a structure of model for a Book
-const bookSchema = new mongoose.Schema({
-  name: String,
-  author: String,
-  price: Number,
-  currency: String,
-  quantity: Number
-});
+// //defining a structure of model for a Book
+// const bookSchema = new mongoose.Schema({
+//   name: String,
+//   author: String,
+//   price: Number,
+//   currency: String,
+//   quantity: Number
+// });
 
-const Book = mongoose.model("Book", bookSchema);
-
-
-//Create, Read, Update, and Delete (CRUD) Operations
-const newBook = new Book({
-  name: "Mobile Data Management",
-  author: "Test1",
-  price: 50.00,
-  currency: "CAD",
-  quantity: 10
-});
-
-newBook.save()
-.then(() => {
-  console.log("Book saved successfully");
-})
-.catch((error) => {
-  console.error("Failed to save book", error);
-});
+// const Book = mongoose.model("Book", bookSchema);
 
 
-//Close Database Connection
-mongoose.connection.close()
-.then(() => {
-  console.log("Disconnected from database");
-})
-.catch((error) => {
-  console.error("Failed to disconnect from database", error);
-});
+// //Create, Read, Update, and Delete (CRUD) Operations
+// const newBook = new Book({
+//   name: "Mobile Data Management",
+//   author: "Test1",
+//   price: 50.00,
+//   currency: "CAD",
+//   quantity: 10
+// });
 
-//**********Mangoose Database End ***********//
+// newBook.save()
+// .then(() => {
+//   console.log("Book saved successfully");
+// })
+// .catch((error) => {
+//   console.error("Failed to save book", error);
+// });
+
+
+// //Close Database Connection
+// mongoose.connection.close()
+// .then(() => {
+//   console.log("Disconnected from database");
+// })
+// .catch((error) => {
+//   console.error("Failed to disconnect from database", error);
+// });
+
+//********** Mangoose Database End ***********//
 
 
 paypal.configure({
@@ -68,6 +68,89 @@ paypal.configure({
 const PORT = process.env.PORT || 3000;
 
 const app = express();
+
+//********** Order Management Start ***********//
+
+// Create an order
+app.post("/create-order", (req, res) => {
+  const create_order_json = {
+    intent: "CAPTURE",
+    purchase_units: [
+      {
+        amount: {
+          currency_code: "CAD",
+          value: "500.00",
+        },
+        description: "Test description assignment5",
+        items: [
+          {
+            name: "Mobile Data Management",
+            unit_amount: {
+              currency_code: "CAD",
+              value: "50.00",
+            },
+            quantity: "10",
+          },
+        ],
+      },
+    ],
+    application_context: {
+      return_url: "https://paypalnode.com/success",
+      cancel_url: "https://paypalnode.com/cancel",
+    },
+  };
+
+  paypal.orders.create(create_order_json, function (error, order) {
+    if (error) {
+      throw error;
+    } else {
+      // Redirect the user to the approval URL
+      for (let i = 0; i < order.links.length; i++) {
+        if (order.links[i].rel === "approve") {
+          res.redirect(order.links[i].href);
+        }
+      }
+    }
+  });
+});
+
+// Capture an order
+app.post("/capture-order", (req, res) => {
+  const orderID = req.body.orderID;
+
+  const capture_order_json = {};
+
+  paypal.orders.capture(orderID, capture_order_json, function (
+    error,
+    capture
+  ) {
+    if (error) {
+      console.log(error.response);
+      throw error;
+    } else {
+      console.log(JSON.stringify(capture));
+      res.send("Order captured successfully");
+    }
+  });
+});
+
+// Retrieve an order
+app.get("/get-order/:orderID", (req, res) => {
+  const orderID = req.params.orderID;
+
+  paypal.orders.get(orderID, function (error, order) {
+    if (error) {
+      console.log(error.response);
+      throw error;
+    } else {
+      console.log(JSON.stringify(order));
+      res.send(order);
+    }
+  });
+});
+
+//********** Order Management End ***********//
+
 
 app.get("/", (req, res) => res.sendFile(__dirname + "/index.html"));
 
