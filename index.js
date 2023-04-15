@@ -2,12 +2,14 @@ const mongoose = require("mongoose");
 const express = require("express");
 const paypal = require('paypal-rest-sdk');
 
+const mode = "sandbox";
+const client_id = "ARXRj4rh-8znnzs_OrCws8T5Us-EOph3NT51a7b5z37K7Y4fbSF_RifyaT9bDj9kKp3-ZUPtRVR5AUun";
+const client_secret = "EJP4CvPpZMEjmsK5vqwAD_mIZyCHe8eV62ylVYRzZld5oSHjjeB2S7-wNpi0G5l2KA_g_67_lN7Y_-2U";
+
 paypal.configure({
-  mode: "sandbox", //sandbox or live
-  client_id:
-    "ARXRj4rh-8znnzs_OrCws8T5Us-EOph3NT51a7b5z37K7Y4fbSF_RifyaT9bDj9kKp3-ZUPtRVR5AUun",
-  client_secret:
-    "EJP4CvPpZMEjmsK5vqwAD_mIZyCHe8eV62ylVYRzZld5oSHjjeB2S7-wNpi0G5l2KA_g_67_lN7Y_-2U",
+  mode: mode,
+  client_id: client_id,
+  client_secret: client_secret
 });
 
 const PORT = process.env.PORT || 3000;
@@ -15,33 +17,28 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 
 
-// This sample uses SandboxEnvironment. In production, use LiveEnvironment
-//let environment = new paypal.core.SandboxEnvironment(client_id, client_secret);
-//let client = new paypal.core.PayPalHttpClient(environment);
-
 // Construct a request object and set desired parameters
-// Here, OrdersCreateRequest() creates a POST request to /v2/checkout/orders
-let request = new paypal.orders.OrdersCreateRequest();
-request.requestBody({
-    "intent": "CAPTURE",
-    "purchase_units": [
-        {
-            "amount": {
-                "currency_code": "USD",
-                "value": "100.00"
-            }
-        }
-     ]
-});
-
-// Call API with your client and get a response for your call
-let createOrder  = async function() {
-    let response = await client.execute(request);
-    console.log(`Response: ${JSON.stringify(response)}`);
-    
-    // If call returns body in response, you can get the deserialized version from the result attribute of the response.
-    console.log(`Order: ${JSON.stringify(response.result)}`);
-}
+// Here, you can directly pass the request parameters to the create method
+let createOrder = async function() {
+  try {
+      let response = await paypal.orders.create({
+          "intent": "CAPTURE",
+          "purchase_units": [
+              {
+                  "amount": {
+                      "currency_code": "USD",
+                      "value": "100.00"
+                  }
+              }
+           ]
+      });
+      console.log(`Response: ${JSON.stringify(response)}`);
+      // If call returns body in response, you can get the deserialized version from the result attribute of the response.
+      console.log(`Order: ${JSON.stringify(response.result)}`);
+  } catch (error) {
+      console.error(`Failed to create order: ${error.message}`);
+  }
+};
 createOrder();
 
 //**********Mangoose Database Start ***********//
@@ -74,7 +71,7 @@ const newBook = new Book({
   name: "Mobile Data Management",
   author: "Test1",
   price: 50.00,
-  currency: "CAD",
+  currency: "USD",
   quantity: 10
 });
 
@@ -102,50 +99,51 @@ newBook.save()
 
 
 //********** Order Management Start ***********//
+app.post("/orders", async (req, res) => {
+  try {
+    const create_order_json = {
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          amount: {
+            currency_code: "USD",
+            value: "500.00",
+          },
+          description: "Test description assignment5",
+          items: [
+            {
+              name: "Mobile Data Management",
+              unit_amount: {
+                currency_code: "USD",
+                value: "50.00",
+              },
+              quantity: "10",
+            },
+          ],
+        },
+      ],
+      application_context: {
+        return_url: "https://paypalnode.com/success",
+        cancel_url: "https://paypalnode.com/cancel",
+      },
+    };
 
+    const response = await paypal.orders.create(create_order_json);
+    console.log(`Response: ${JSON.stringify(response)}`);
+    // If call returns body in response, you can get the deserialized version from the result attribute of the response.
+    console.log(`Order: ${JSON.stringify(response.result)}`);
 
-// // Create an order
-// app.post("/create-order", (req, res) => {
-//   const create_order_json = {
-//     intent: "CAPTURE",
-//     purchase_units: [
-//       {
-//         amount: {
-//           currency_code: "CAD",
-//           value: "500.00",
-//         },
-//         description: "Test description assignment5",
-//         items: [
-//           {
-//             name: "Mobile Data Management",
-//             unit_amount: {
-//               currency_code: "CAD",
-//               value: "50.00",
-//             },
-//             quantity: "10",
-//           },
-//         ],
-//       },
-//     ],
-//     application_context: {
-//       return_url: "https://paypalnode.com/success",
-//       cancel_url: "https://paypalnode.com/cancel",
-//     },
-//   };
-
-//   paypal.orders.create(create_order_json, function (error, order) {
-//     if (error) {
-//       throw error;
-//     } else {
-//       // Redirect the user to the approval URL
-//       for (let i = 0; i < order.links.length; i++) {
-//         if (order.links[i].rel === "approve") {
-//           res.redirect(order.links[i].href);
-//         }
-//       }
-//     }
-//   });
-// });
+    // Redirect the user to the approval URL
+    for (let i = 0; i < response.result.links.length; i++) {
+      if (response.result.links[i].rel === "approve") {
+        res.redirect(response.result.links[i].href);
+      }
+    }
+  } catch (error) {
+    console.error(`Failed to create order: ${error.message}`);
+    res.status(500).send("Failed to create order");
+  }
+});
 
 // // Capture an order
 // app.post("/capture-order", (req, res) => {
@@ -206,13 +204,13 @@ app.post("/pay", (req, res) => {
               name: "Mobile Data Mangement",
               Author: "Test1",
               price: "50.00",
-              currency: "CAD",
+              currency: "USD",
               quantity: 10,
             },
           ],
         },
         amount: {
-          currency: "CAD",
+          currency: "USD",
           total: "500.00",
         },
         description: "Test description assignment5",
