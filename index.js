@@ -73,7 +73,7 @@ app.get("/", (req, res) => res.sendFile(__dirname + "/index.html"));
 
 app.post("/pay", (req, res) => {
   const create_payment_json = {
-    intent: "Book Fair",
+    intent: "sale",
     payer: {
       payment_method: "paypal",
     },
