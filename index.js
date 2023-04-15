@@ -1,6 +1,48 @@
 const mongoose = require("mongoose");
 const express = require("express");
-const paypal = require("paypal-rest-sdk");
+const paypal = require('paypal-rest-sdk');
+
+paypal.configure({
+  mode: "sandbox", //sandbox or live
+  client_id:
+    "ARXRj4rh-8znnzs_OrCws8T5Us-EOph3NT51a7b5z37K7Y4fbSF_RifyaT9bDj9kKp3-ZUPtRVR5AUun",
+  client_secret:
+    "EJP4CvPpZMEjmsK5vqwAD_mIZyCHe8eV62ylVYRzZld5oSHjjeB2S7-wNpi0G5l2KA_g_67_lN7Y_-2U",
+});
+
+const PORT = process.env.PORT || 3000;
+
+const app = express();
+
+
+// This sample uses SandboxEnvironment. In production, use LiveEnvironment
+//let environment = new paypal.core.SandboxEnvironment(client_id, client_secret);
+//let client = new paypal.core.PayPalHttpClient(environment);
+
+// Construct a request object and set desired parameters
+// Here, OrdersCreateRequest() creates a POST request to /v2/checkout/orders
+let request = new paypal.orders.OrdersCreateRequest();
+request.requestBody({
+    "intent": "CAPTURE",
+    "purchase_units": [
+        {
+            "amount": {
+                "currency_code": "USD",
+                "value": "100.00"
+            }
+        }
+     ]
+});
+
+// Call API with your client and get a response for your call
+let createOrder  = async function() {
+    let response = await client.execute(request);
+    console.log(`Response: ${JSON.stringify(response)}`);
+    
+    // If call returns body in response, you can get the deserialized version from the result attribute of the response.
+    console.log(`Order: ${JSON.stringify(response.result)}`);
+}
+createOrder();
 
 //**********Mangoose Database Start ***********//
 
@@ -15,34 +57,34 @@ mongoose.connect('mongodb+srv://dbuser:avokado@lyubovk.egwftuw.mongodb.net/?retr
 });
 
 
-// //defining a structure of model for a Book
-// const bookSchema = new mongoose.Schema({
-//   name: String,
-//   author: String,
-//   price: Number,
-//   currency: String,
-//   quantity: Number
-// });
+//defining a structure of model for a Book
+const bookSchema = new mongoose.Schema({
+  name: String,
+  author: String,
+  price: Number,
+  currency: String,
+  quantity: Number
+});
 
-// const Book = mongoose.model("Book", bookSchema);
+const Book = mongoose.model("Book", bookSchema);
 
 
-// //Create, Read, Update, and Delete (CRUD) Operations
-// const newBook = new Book({
-//   name: "Mobile Data Management",
-//   author: "Test1",
-//   price: 50.00,
-//   currency: "CAD",
-//   quantity: 10
-// });
+//Create, Read, Update, and Delete (CRUD) Operations
+const newBook = new Book({
+  name: "Mobile Data Management",
+  author: "Test1",
+  price: 50.00,
+  currency: "CAD",
+  quantity: 10
+});
 
-// newBook.save()
-// .then(() => {
-//   console.log("Book saved successfully");
-// })
-// .catch((error) => {
-//   console.error("Failed to save book", error);
-// });
+newBook.save()
+.then(() => {
+  console.log("Book saved successfully");
+})
+.catch((error) => {
+  console.error("Failed to save book", error);
+});
 
 
 // //Close Database Connection
@@ -57,97 +99,88 @@ mongoose.connect('mongodb+srv://dbuser:avokado@lyubovk.egwftuw.mongodb.net/?retr
 //********** Mangoose Database End ***********//
 
 
-paypal.configure({
-  mode: "sandbox", //sandbox or live
-  client_id:
-    "ARXRj4rh-8znnzs_OrCws8T5Us-EOph3NT51a7b5z37K7Y4fbSF_RifyaT9bDj9kKp3-ZUPtRVR5AUun",
-  client_secret:
-    "EJP4CvPpZMEjmsK5vqwAD_mIZyCHe8eV62ylVYRzZld5oSHjjeB2S7-wNpi0G5l2KA_g_67_lN7Y_-2U",
-});
 
-const PORT = process.env.PORT || 3000;
-
-const app = express();
 
 //********** Order Management Start ***********//
 
-// Create an order
-app.post("/create-order", (req, res) => {
-  const create_order_json = {
-    intent: "CAPTURE",
-    purchase_units: [
-      {
-        amount: {
-          currency_code: "CAD",
-          value: "500.00",
-        },
-        description: "Test description assignment5",
-        items: [
-          {
-            name: "Mobile Data Management",
-            unit_amount: {
-              currency_code: "CAD",
-              value: "50.00",
-            },
-            quantity: "10",
-          },
-        ],
-      },
-    ],
-    application_context: {
-      return_url: "https://paypalnode.com/success",
-      cancel_url: "https://paypalnode.com/cancel",
-    },
-  };
 
-  paypal.orders.create(create_order_json, function (error, order) {
-    if (error) {
-      throw error;
-    } else {
-      // Redirect the user to the approval URL
-      for (let i = 0; i < order.links.length; i++) {
-        if (order.links[i].rel === "approve") {
-          res.redirect(order.links[i].href);
-        }
-      }
-    }
-  });
-});
+// // Create an order
+// app.post("/create-order", (req, res) => {
+//   const create_order_json = {
+//     intent: "CAPTURE",
+//     purchase_units: [
+//       {
+//         amount: {
+//           currency_code: "CAD",
+//           value: "500.00",
+//         },
+//         description: "Test description assignment5",
+//         items: [
+//           {
+//             name: "Mobile Data Management",
+//             unit_amount: {
+//               currency_code: "CAD",
+//               value: "50.00",
+//             },
+//             quantity: "10",
+//           },
+//         ],
+//       },
+//     ],
+//     application_context: {
+//       return_url: "https://paypalnode.com/success",
+//       cancel_url: "https://paypalnode.com/cancel",
+//     },
+//   };
 
-// Capture an order
-app.post("/capture-order", (req, res) => {
-  const orderID = req.body.orderID;
+//   paypal.orders.create(create_order_json, function (error, order) {
+//     if (error) {
+//       throw error;
+//     } else {
+//       // Redirect the user to the approval URL
+//       for (let i = 0; i < order.links.length; i++) {
+//         if (order.links[i].rel === "approve") {
+//           res.redirect(order.links[i].href);
+//         }
+//       }
+//     }
+//   });
+// });
 
-  const capture_order_json = {};
+// // Capture an order
+// app.post("/capture-order", (req, res) => {
+//   const orderID = req.body.orderID;
 
-  paypal.orders.capture(orderID, capture_order_json, function (
-    error,
-    capture
-  ) {
-    if (error) {
-      console.log(error.response);
-      throw error;
-    } else {
-      console.log(JSON.stringify(capture));
-      res.send("Order captured successfully");
-    }
-  });
-});
+//   const capture_order_json = {};
 
-// Retrieve an order
-app.get("/get-order/:orderID", (req, res) => {
-  const orderID = req.params.orderID;
+//   paypal.orders.capture(orderID, capture_order_json, function (
+//     error,
+//     capture
+//   ) {
+//     if (error) {
+//       console.log(error.response);
+//       throw error;
+//     } else {
+//       console.log(JSON.stringify(capture));
+//       res.send("Order captured successfully");
+//     }
+//   });
+// });
 
-  paypal.orders.get(orderID, function (error, order) {
-    if (error) {
-      console.log(error.response);
-      throw error;
-    } else {
-      console.log(JSON.stringify(order));
-      res.send(order);
-    }
-  });
-});
+// // Retrieve an order
+// app.get("/get-order/:orderID", (req, res) => {
+//   const orderID = req.params.orderID;
+
+//   paypal.orders.get(orderID, function (error, order) {
+//     if (error) {
+//       console.log(error.response);
+//       throw error;
+//     } else {
+//       console.log(JSON.stringify(order));
+//       res.send(order);
+//     }
+//   });
+// });
 
 //********** Order Management End ***********//
 
@@ -161,8 +194,9 @@ app.post("/pay", (req, res) => {
       payment_method: "paypal",
     },
     redirect_urls: {
-      return_url: "https://paypalnode.com/success",
-      cancel_url: "https://paypalnode.com/cancel",
+      return_url: "http://localhost:3000/success",
+      cancel_url: "http://localhost:3000/cancel",
+      //cancel_url: "https://paypalnode.com/cancel",
     },
     transactions: [
       {
@@ -185,6 +219,7 @@ app.post("/pay", (req, res) => {
       },
     ],
   };
+
 
   paypal.payment.create(create_payment_json, function (error, payment) {
     if (error) {
