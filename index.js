@@ -17,8 +17,21 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 
 
-// Construct a request object and set desired parameters
-// Here, you can directly pass the request parameters to the create method
+
+//**********Mangoose Database Start ***********//
+
+//connecting our app to mangoose database
+mongoose.connect('mongodb+srv://dbuser:avokado@lyubovk.egwftuw.mongodb.net/?retryWrites=true&w=majority', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => {
+  console.log("Connected to database");
+}).catch((error) => {
+  console.error("Failed to connect to database", error);
+});
+
+
+// Create order function
 let createOrder = async function() {
   try {
       let response = await paypal.orders.create({
@@ -41,64 +54,48 @@ let createOrder = async function() {
 };
 createOrder();
 
-//**********Mangoose Database Start ***********//
 
-//connecting our app to mangoose database
-mongoose.connect('mongodb+srv://dbuser:avokado@lyubovk.egwftuw.mongodb.net/?retryWrites=true&w=majority', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => {
-  console.log("Connected to database");
-}).catch((error) => {
-  console.error("Failed to connect to database", error);
+// Capture an order function
+app.post("/capture-order", (req, res) => {
+  const orderID = req.body.orderID;
+
+  const capture_order_json = {};
+
+  paypal.orders.capture(orderID, capture_order_json, function (
+    error,
+    capture
+  ) {
+    if (error) {
+      console.log(error.response);
+      throw error;
+    } else {
+      console.log(JSON.stringify(capture));
+      res.send("Order captured successfully");
+    }
+  });
 });
 
+// // Retrieve an order
+// app.get("/get-order/:orderID", (req, res) => {
+//   const orderID = req.params.orderID;
 
-//defining a structure of model for a Book
-const bookSchema = new mongoose.Schema({
-  name: String,
-  author: String,
-  price: Number,
-  currency: String,
-  quantity: Number
-});
-
-const Book = mongoose.model("Book", bookSchema);
-
-
-//Create, Read, Update, and Delete (CRUD) Operations
-const newBook = new Book({
-  name: "Mobile Data Management",
-  author: "Test1",
-  price: 50.00,
-  currency: "USD",
-  quantity: 10
-});
-
-newBook.save()
-.then(() => {
-  console.log("Book saved successfully");
-})
-.catch((error) => {
-  console.error("Failed to save book", error);
-});
-
-
-// //Close Database Connection
-// mongoose.connection.close()
-// .then(() => {
-//   console.log("Disconnected from database");
-// })
-// .catch((error) => {
-//   console.error("Failed to disconnect from database", error);
+//   paypal.orders.get(orderID, function (error, order) {
+//     if (error) {
+//       console.log(error.response);
+//       throw error;
+//     } else {
+//       console.log(JSON.stringify(order));
+//       res.send(order);
+//     }
+//   });
 // });
 
-//********** Mangoose Database End ***********//
+//********** Order Management End ***********//
 
 
 
-
-//********** Order Management Start ***********//
+//POST order route
+// Create a new order and save it to MongoDB
 app.post("/orders", async (req, res) => {
   try {
     const create_order_json = {
@@ -133,6 +130,18 @@ app.post("/orders", async (req, res) => {
     // If call returns body in response, you can get the deserialized version from the result attribute of the response.
     console.log(`Order: ${JSON.stringify(response.result)}`);
 
+    // Create a new Book instance
+    const newBook = new Book({
+      name: "Mobile Data Management",
+      author: "Test1",
+      price: 50.00,
+      currency: "USD",
+      quantity: 10
+    });
+
+    // Save the new Book instance to MongoDB
+    await newBook.save();
+
     // Redirect the user to the approval URL
     for (let i = 0; i < response.result.links.length; i++) {
       if (response.result.links[i].rel === "approve") {
@@ -145,43 +154,8 @@ app.post("/orders", async (req, res) => {
   }
 });
 
-// // Capture an order
-// app.post("/capture-order", (req, res) => {
-//   const orderID = req.body.orderID;
 
-//   const capture_order_json = {};
-
-//   paypal.orders.capture(orderID, capture_order_json, function (
-//     error,
-//     capture
-//   ) {
-//     if (error) {
-//       console.log(error.response);
-//       throw error;
-//     } else {
-//       console.log(JSON.stringify(capture));
-//       res.send("Order captured successfully");
-//     }
-//   });
-// });
-
-// // Retrieve an order
-// app.get("/get-order/:orderID", (req, res) => {
-//   const orderID = req.params.orderID;
-
-//   paypal.orders.get(orderID, function (error, order) {
-//     if (error) {
-//       console.log(error.response);
-//       throw error;
-//     } else {
-//       console.log(JSON.stringify(order));
-//       res.send(order);
-//     }
-//   });
-// });
-
-//********** Order Management End ***********//
-
+//Payment route
 
 app.get("/", (req, res) => res.sendFile(__dirname + "/index.html"));
 
@@ -265,3 +239,12 @@ app.get("/success", (req, res) => {
 app.get("/cancel", (req, res) => res.send("Cancelled"));
 
 app.listen(PORT, () => console.log(`Server Started on ${PORT}`));
+
+// //Close Database Connection
+// mongoose.connection.close()
+// .then(() => {
+//   console.log("Disconnected from database");
+// })
+// .catch((error) => {
+//   console.error("Failed to disconnect from database", error);
+// });
