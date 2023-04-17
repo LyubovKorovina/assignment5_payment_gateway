@@ -13,6 +13,7 @@
     "@paypal/checkout-server-sdk": "^1.0.3",
     "@types/paypal__checkout-server-sdk": "^1.0.5",
     "express": "^4.18.2",
+    "mongodb": "4.1",
     "mongoose": "^7.0.3",
     "nodemon": "^2.0.22",
     "paypal-rest-sdk": "^1.8.1"
